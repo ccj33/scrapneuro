@@ -1,0 +1,37 @@
+name: Relatórios Automáticos de Editais
+on:
+  schedule:
+    - cron: '0 5 5 * *'     # Todo dia 5 às 5:00 UTC
+    - cron: '0 5 * * 1'     # Toda segunda às 5:00 UTC
+  workflow_dispatch:
+
+jobs:
+  enviar-relatorio:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+
+      - name: Instalar dependências
+        run: |
+          pip install selenium
+          pip install beautifulsoup4
+          pip install requests
+
+      - name: Executar envio automático
+        run: python fapemig_scraper.py
+        env:
+          EMAIL_USER: ${{ secrets.EMAIL_USER }}
+          EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
+
+      - name: Upload dos arquivos gerados
+        uses: actions/upload-artifact@v4
+        with:
+          name: relatorios-editais
+          path: |
+            editais_scraping.json
+            editais_scraping.csv
