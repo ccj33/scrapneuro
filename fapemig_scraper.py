@@ -448,33 +448,21 @@ def scrape_fapemig_completo():
 
                 print(f"   📝 Debug - Texto do bloco ({len(expanded_text)} chars): {expanded_text[:200]}...")
 
-                # 🎯 EXTRAIR TÍTULO COMPLETO FAPEMIG
+                # 🎯 EXTRAIR TÍTULO COMPLETO do h1 (incluindo texto após o <strong>)
                 titulo = ""
-                
-                # 🔍 TENTATIVA 1: Pegar o conteúdo completo do h1 (incluindo strong + texto)
-                h1_match = re.search(r'<h1[^>]*>(.*?)</h1>', bloco, re.DOTALL)
+                # Pegar TODO o conteúdo do h1, não só o <strong>
+                h1_match = re.search(r'<h1[^>]*>(.*?)</h1>', bloco, re.DOTALL | re.IGNORECASE)
                 if h1_match:
-                    h1_content = h1_match.group(1)
-                    # Limpar HTML e pegar texto completo
-                    from bs4 import BeautifulSoup
-                    h1_soup = BeautifulSoup(h1_content, 'html.parser')
-                    titulo = h1_soup.get_text(separator=' ', strip=True)
-                
-                # 🔍 TENTATIVA 2: Se não encontrou, tentar apenas o strong (fallback)
-                if not titulo:
+                    # Usar BeautifulSoup para limpar HTML e pegar todo o texto
+                    h1_soup = BeautifulSoup(h1_match.group(1), "html.parser")
+                    titulo = h1_soup.get_text(separator=" ", strip=True)
+                else:
+                    # Fallback: tentar pegar o <strong> se não encontrar h1
                     strong_match = re.search(r'<strong[^>]*>([^<]+)</strong>', bloco)
                     if strong_match:
                         titulo = strong_match.group(1).strip()
-                
-                # 🔍 TENTATIVA 3: Procurar por padrão específico da FAPEMIG
-                if not titulo:
-                    # Padrão: "CHAMADA FAPEMIG XXX/XXXX - DESCRIÇÃO COMPLETA"
-                    fapemig_pattern = r'CHAMADA FAPEMIG\s+\d+/\d+\s*[-–]\s*([^-–]+)'
-                    fapemig_match = re.search(fapemig_pattern, expanded_text, re.IGNORECASE)
-                    if fapemig_match:
-                        titulo = f"CHAMADA FAPEMIG {re.search(r'CHAMADA FAPEMIG\s+(\d+/\d+)', expanded_text, re.IGNORECASE).group(1)} - {fapemig_match.group(1).strip()}"
-                
-                print(f"   📝 Título encontrado: {titulo[:100]}...")
+
+                print(f"   📝 Título encontrado: {titulo[:60]}...")
 
                 # 🔗 EXTRAIR LINKS DE ANEXOS (PDF, DOCX)
                 anexo_links = []
