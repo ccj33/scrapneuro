@@ -448,14 +448,33 @@ def scrape_fapemig_completo():
 
                 print(f"   📝 Debug - Texto do bloco ({len(expanded_text)} chars): {expanded_text[:200]}...")
 
-                # 🎯 EXTRAIR TÍTULO (da estrutura h1 correta)
+                # 🎯 EXTRAIR TÍTULO COMPLETO FAPEMIG
                 titulo = ""
-                # Pegar o conteúdo do <strong> dentro do h1
-                strong_match = re.search(r'<strong[^>]*>([^<]+)</strong>', bloco)
-                if strong_match:
-                    titulo = strong_match.group(1).strip()
-
-                print(f"   📝 Título encontrado: {titulo[:60]}...")
+                
+                # 🔍 TENTATIVA 1: Pegar o conteúdo completo do h1 (incluindo strong + texto)
+                h1_match = re.search(r'<h1[^>]*>(.*?)</h1>', bloco, re.DOTALL)
+                if h1_match:
+                    h1_content = h1_match.group(1)
+                    # Limpar HTML e pegar texto completo
+                    from bs4 import BeautifulSoup
+                    h1_soup = BeautifulSoup(h1_content, 'html.parser')
+                    titulo = h1_soup.get_text(separator=' ', strip=True)
+                
+                # 🔍 TENTATIVA 2: Se não encontrou, tentar apenas o strong (fallback)
+                if not titulo:
+                    strong_match = re.search(r'<strong[^>]*>([^<]+)</strong>', bloco)
+                    if strong_match:
+                        titulo = strong_match.group(1).strip()
+                
+                # 🔍 TENTATIVA 3: Procurar por padrão específico da FAPEMIG
+                if not titulo:
+                    # Padrão: "CHAMADA FAPEMIG XXX/XXXX - DESCRIÇÃO COMPLETA"
+                    fapemig_pattern = r'CHAMADA FAPEMIG\s+\d+/\d+\s*[-–]\s*([^-–]+)'
+                    fapemig_match = re.search(fapemig_pattern, expanded_text, re.IGNORECASE)
+                    if fapemig_match:
+                        titulo = f"CHAMADA FAPEMIG {re.search(r'CHAMADA FAPEMIG\s+(\d+/\d+)', expanded_text, re.IGNORECASE).group(1)} - {fapemig_match.group(1).strip()}"
+                
+                print(f"   📝 Título encontrado: {titulo[:100]}...")
 
                 # 🔗 EXTRAIR LINKS DE ANEXOS (PDF, DOCX)
                 anexo_links = []
