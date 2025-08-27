@@ -142,4 +142,58 @@ python fapemig_scraper.py
 
 ---
 
+## 🐛 **DIAGNÓSTICO DE PROBLEMAS DE EMAIL**
+
+### Email não está sendo enviado?
+
+1. **Execute o teste de email**:
+   ```bash
+   python fapemig_scraper.py --teste-email
+   ```
+
+2. **Ou use o script separado**:
+   ```bash
+   python teste_email.py
+   ```
+
+3. **Verifique os logs** - o script mostra:
+   - ✅ Se as variáveis de ambiente estão definidas
+   - 🔗 Tentativa de conexão SMTP
+   - ❌ Erros de autenticação específicos
+
+### Possíveis Problemas e Soluções:
+
+#### ❌ "Credenciais de email não configuradas"
+- **Causa**: EMAIL_USER ou EMAIL_PASSWORD não definidos no GitHub Secrets
+- **Solução**: Configure as secrets no GitHub Actions
+
+#### ❌ "ERRO DE AUTENTICAÇÃO"
+- **Causa**: Senha de aplicativo incorreta ou expirada
+- **Solução**:
+  - Gere uma nova senha de aplicativo no Gmail
+  - Atualize EMAIL_PASSWORD no GitHub Secrets
+
+#### ❌ "ERRO DE CONEXÃO"
+- **Causa**: Problemas de rede ou firewall
+- **Solução**: Verifique conexão com internet
+
+### Modo de Teste Ativado
+
+⚠️ **ATENÇÃO**: O script está em modo de teste. Para desativar:
+
+```python
+# No arquivo fapemig_scraper.py, linha ~780
+TESTE_FORCADO = False  # ALTERE PARA False APÓS OS TESTES
+```
+
+### Condições de Envio
+
+O relatório é enviado automaticamente quando:
+- **Dia 5 do mês** (relatório diário)
+- **Segunda-feira** (relatório semanal)
+
+Durante os testes, o modo forçado envia independente da data.
+
+---
+
 **🎉 Sistema completo funcionando! Receberá emails automáticos com todos os editais de todas as fontes!**

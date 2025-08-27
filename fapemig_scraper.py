@@ -705,6 +705,25 @@ def enviar_email(destinatario, assunto, corpo):
     SMTP_SERVIDOR = "smtp.gmail.com"
     SMTP_PORTA = 587
 
+    print(f"📧 Tentando enviar email para: {destinatario}")
+    print(f"📧 Remetente: {EMAIL_REMETENTE}")
+    print(f"📧 Servidor SMTP: {SMTP_SERVIDOR}:{SMTP_PORTA}")
+
+    # 🔍 DEBUG: Verificar variáveis de ambiente
+    import os
+    print("🔍 DEBUG - Variáveis de ambiente:")
+    print(f"   EMAIL_USER definido: {'Sim' if os.environ.get('EMAIL_USER') else 'Não'}")
+    print(f"   EMAIL_PASSWORD definido: {'Sim' if os.environ.get('EMAIL_PASSWORD') else 'Não'}")
+    print(f"   EMAIL_USER valor: {os.environ.get('EMAIL_USER', 'NÃO DEFINIDO')[:10]}...")
+    print(f"   EMAIL_PASSWORD valor: {'*' * len(os.environ.get('EMAIL_PASSWORD', '')) if os.environ.get('EMAIL_PASSWORD') else 'NÃO DEFINIDO'}")
+
+    # Verificar se as credenciais estão configuradas
+    if EMAIL_REMETENTE == "seu_email@gmail.com" or SENHA_EMAIL == "sua_senha_app":
+        print("❌ ERRO: Credenciais de email não configuradas!")
+        print("🔧 Configure EMAIL_USER e EMAIL_PASSWORD no GitHub Secrets")
+        print("🔧 No GitHub: Settings > Secrets and variables > Actions > New repository secret")
+        return False
+
     try:
         # Criar mensagem
         msg = MIMEMultipart()
@@ -715,18 +734,40 @@ def enviar_email(destinatario, assunto, corpo):
         # Adicionar corpo
         msg.attach(MIMEText(corpo, 'html'))
 
+        print("🔗 Conectando ao servidor SMTP...")
+        print(f"   Servidor: {SMTP_SERVIDOR}")
+        print(f"   Porta: {SMTP_PORTA}")
+        print(f"   Usuário: {EMAIL_REMETENTE}")
+
         # Conectar e enviar
+        print("🔗 Criando conexão SMTP...")
         servidor = smtplib.SMTP(SMTP_SERVIDOR, SMTP_PORTA)
+        print("🔗 Iniciando TLS...")
         servidor.starttls()
+        print("🔗 Fazendo login...")
         servidor.login(EMAIL_REMETENTE, SENHA_EMAIL)
+        print("🔗 Enviando email...")
         servidor.sendmail(EMAIL_REMETENTE, destinatario, msg.as_string())
+        print("🔗 Fechando conexão...")
         servidor.quit()
 
         print(f"✅ Email enviado com sucesso para: {destinatario}")
         return True
 
+    except smtplib.SMTPAuthenticationError as e:
+        print(f"❌ ERRO DE AUTENTICAÇÃO: {str(e)}")
+        print("🔧 Verifique se a senha do aplicativo está correta no GitHub Secrets")
+        print("🔧 Para Gmail: Ative a verificação em 2 etapas e gere uma senha de aplicativo")
+        return False
+
+    except smtplib.SMTPConnectError as e:
+        print(f"❌ ERRO DE CONEXÃO: {str(e)}")
+        print("🔧 Verifique a conexão com a internet e as configurações do servidor SMTP")
+        return False
+
     except Exception as e:
-        print(f"❌ Erro ao enviar email: {str(e)}")
+        print(f"❌ ERRO GERAL ao enviar email: {str(e)}")
+        print(f"🔧 Tipo do erro: {type(e).__name__}")
         return False
 
 def enviar_relatorio_automatico():
@@ -740,37 +781,88 @@ def enviar_relatorio_automatico():
     dia_semana = hoje.weekday()  # 0 = segunda, 6 = domingo
     dia_mes = hoje.day
 
+    print("📅 Verificando condições para envio automático...")
+    print(f"📅 Hoje é dia {dia_mes} do mês")
+    print(f"📅 Dia da semana: {dia_semana} (0=segunda, 6=domingo)")
+    print(f"📅 Data completa: {hoje.strftime('%d/%m/%Y %H:%M:%S')}")
+
     # 📧 CONFIGURAÇÃO DOS DESTINATÁRIOS
     EMAIL_DIARIO = "ccjota51@gmail.com"        # Todo dia 5
     EMAIL_SEMANAL = "clevioferreira@gmail.com" # Toda segunda
 
+    print(f"📧 Email diário: {EMAIL_DIARIO}")
+    print(f"📧 Email semanal: {EMAIL_SEMANAL}")
+
+    # ⚠️ FORÇAR ENVIO PARA TESTES (remova depois de testar)
+    TESTE_FORCADO = True  # ALTERE PARA False APÓS OS TESTES
+
+    if TESTE_FORCADO:
+        print("🧪 MODO TESTE ATIVADO - Enviando email independente da data!")
+        deve_enviar_diario = True
+        deve_enviar_semanal = False
+    else:
+        # Verificar condições normais de envio
+        deve_enviar_diario = (dia_mes == 5)
+        deve_enviar_semanal = (dia_semana == 0)  # 0 = segunda-feira
+
+    print(f"📧 Deve enviar relatório diário: {deve_enviar_diario}")
+    print(f"📧 Deve enviar relatório semanal: {deve_enviar_semanal}")
+
+    if not deve_enviar_diario and not deve_enviar_semanal:
+        print("📧 Nenhuma condição de envio atendida hoje. Próximo envio:")
+        print("📧 - Diariamente no dia 5 de cada mês")
+        print("📧 - Semanalmente toda segunda-feira")
+        return
+
     # Executar scraping de TODOS os sites
-    print("🔄 Executando scraping completo para relatório...")
-    editais_fapemig = scrape_fapemig_completo()
-    editais_cnpq = scrape_cnpq_completo()
-    editais_ufmg = scrape_ufmg_editais()
+    print("\n🔄 Executando scraping completo para relatório...")
+    try:
+        editais_fapemig = scrape_fapemig_completo()
+        editais_cnpq = scrape_cnpq_completo()
+        editais_ufmg = scrape_ufmg_editais()
 
-    # Filtrar apenas editais UFMG de 2025
-    print(f"🔍 Antes do filtro: {len(editais_ufmg)} editais UFMG")
-    editais_ufmg_2025 = filtrar_ufmg_2025(editais_ufmg)
-    print(f"🎯 Filtrados {len(editais_ufmg_2025)} editais UFMG de 2025")
+        # Filtrar apenas editais UFMG de 2025
+        print(f"🔍 Antes do filtro: {len(editais_ufmg)} editais UFMG")
+        editais_ufmg_2025 = filtrar_ufmg_2025(editais_ufmg)
+        print(f"🎯 Filtrados {len(editais_ufmg_2025)} editais UFMG de 2025")
 
-    # Combinar todos os editais (FAPEMIG + CNPq + UFMG 2025 apenas)
-    todos_editais = editais_fapemig + editais_cnpq + editais_ufmg_2025
+        # Combinar todos os editais (FAPEMIG + CNPq + UFMG 2025 apenas)
+        todos_editais = editais_fapemig + editais_cnpq + editais_ufmg_2025
 
-    # 📧 Todo dia 5 da manhã
-    if dia_mes == 5:
-        assunto = f"📅 RELATÓRIO DIÁRIO - FAPEMIG + CNPq + UFMG 2025 - {hoje.strftime('%d/%m/%Y')}"
+        print(f"📊 Total de editais para relatório: {len(todos_editais)}")
 
-        corpo_email = criar_corpo_email_diario_completo(todos_editais, hoje, editais_fapemig, editais_cnpq, editais_ufmg_2025)
-        enviar_email(EMAIL_DIARIO, assunto, corpo_email)
+        # 📧 Todo dia 5 da manhã
+        if deve_enviar_diario:
+            print("\n📧 ENVIANDO RELATÓRIO DIÁRIO...")
+            assunto = f"📅 RELATÓRIO DIÁRIO - FAPEMIG + CNPq + UFMG 2025 - {hoje.strftime('%d/%m/%Y')}"
 
-    # 📧 Toda segunda-feira
-    if dia_semana == 0:  # 0 = segunda-feira
-        assunto = f"📊 RELATÓRIO SEMANAL - FAPEMIG + CNPq + UFMG 2025 - Semana {hoje.strftime('%d/%m/%Y')}"
+            corpo_email = criar_corpo_email_diario_completo(todos_editais, hoje, editais_fapemig, editais_cnpq, editais_ufmg_2025)
+            sucesso = enviar_email(EMAIL_DIARIO, assunto, corpo_email)
 
-        corpo_email = criar_corpo_email_semanal_completo(todos_editais, hoje, editais_fapemig, editais_cnpq, editais_ufmg_2025)
-        enviar_email(EMAIL_SEMANAL, assunto, corpo_email)
+            if sucesso:
+                print("✅ Relatório diário enviado com sucesso!")
+            else:
+                print("❌ Falha ao enviar relatório diário!")
+
+        # 📧 Toda segunda-feira
+        if deve_enviar_semanal:
+            print("\n📧 ENVIANDO RELATÓRIO SEMANAL...")
+            assunto = f"📊 RELATÓRIO SEMANAL - FAPEMIG + CNPq + UFMG 2025 - Semana {hoje.strftime('%d/%m/%Y')}"
+
+            corpo_email = criar_corpo_email_semanal_completo(todos_editais, hoje, editais_fapemig, editais_cnpq, editais_ufmg_2025)
+            sucesso = enviar_email(EMAIL_SEMANAL, assunto, corpo_email)
+
+            if sucesso:
+                print("✅ Relatório semanal enviado com sucesso!")
+            else:
+                print("❌ Falha ao enviar relatório semanal!")
+
+    except Exception as e:
+        print(f"❌ ERRO GERAL no envio automático: {str(e)}")
+        print(f"🔧 Tipo do erro: {type(e).__name__}")
+        import traceback
+        print("🔧 Traceback completo:")
+        traceback.print_exc()
 
 def criar_corpo_email_diario_completo(todos_editais, data, fapemig_editais, cnpq_editais, ufmg_editais):
     """Criar corpo do email diário COM TODOS OS SITES"""
@@ -1094,4 +1186,22 @@ def criar_corpo_email_semanal_completo(todos_editais, data, fapemig_editais, cnp
     return html
 
 if __name__ == "__main__":
+    import sys
+
+    # Verificar se é apenas teste de email
+    if len(sys.argv) > 1 and sys.argv[1] == "--teste-email":
+        print("🧪 Executando apenas teste de email...")
+        from teste_email import testar_email
+        testar_email()
+        exit(0)
+
     main()
+
+    # 🚀 ENVIAR RELATÓRIO AUTOMÁTICO APÓS O SCRAPING
+    print("\n📧 ENVIANDO RELATÓRIO AUTOMÁTICO...")
+    try:
+        enviar_relatorio_automatico()
+        print("✅ Relatório automático enviado com sucesso!")
+    except Exception as e:
+        print(f"❌ Erro ao enviar relatório automático: {str(e)}")
+        print("🔄 Continuando sem envio de email...")
