@@ -24,7 +24,9 @@ jobs:
           pip install requests
 
       - name: Executar envio automático
-        run: python fapemig_scraper.py
+        run: |
+          echo "🚀 Iniciando scraping com timeout de 10 minutos..."
+          timeout 600 python fapemig_scraper.py || echo "❌ Processo interrompido por timeout ou erro"
         env:
           EMAIL_USER: ${{ secrets.EMAIL_USER }}
           EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}

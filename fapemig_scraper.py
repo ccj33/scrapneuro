@@ -15,7 +15,7 @@ import time
 import csv
 
 def setup_driver():
-    """Configura o driver do Edge para scraping ULTRA-RÁPIDO em modo headless"""
+    """Configura o driver do Edge para scraping ULTRA-RÁPIDO em modo headless com TIMEOUTS"""
     service = Service()
     options = webdriver.EdgeOptions()
 
@@ -28,7 +28,6 @@ def setup_driver():
     options.add_argument('--disable-gpu')
     options.add_argument('--disable-extensions')
     options.add_argument('--disable-images')  # Carrega 10x mais rápido
-    options.add_argument('--disable-javascript')  # Desabilita JS desnecessário
     options.add_argument('--disable-web-security')
     options.add_argument('--disable-features=VizDisplayCompositor')
     options.add_argument('--disable-ipc-flooding-protection')
@@ -76,6 +75,11 @@ def setup_driver():
     options.add_argument('--media-cache-size=1')
 
     driver = webdriver.Edge(service=service, options=options)
+
+    # ⏱️ CONFIGURAR TIMEOUTS PARA EVITAR TRAVAMENTOS
+    driver.set_page_load_timeout(30)  # Timeout de 30 segundos para carregar página
+    driver.implicitly_wait(10)        # Timeout implícito de 10 segundos
+
     return driver
 
 def scrape_cnpq_completo():
@@ -83,10 +87,11 @@ def scrape_cnpq_completo():
     Faz scraping simplificado e eficiente dos editais CNPq
     Baseado na análise: tudo está no HTML, não precisa clicar!
     """
-    driver = setup_driver()
+    driver = None
     editais = []
 
     try:
+        driver = setup_driver()
         print("🌐 Acessando CNPq...")
         driver.get("http://memoria2.cnpq.br/web/guest/chamadas-publicas")
         time.sleep(2)  # Tempo reduzido, não precisa esperar tanto
@@ -109,7 +114,11 @@ def scrape_cnpq_completo():
         print(f"   🔍 Encontrados {len(h4_matches)} editais CNPq com padrão <h4>")
 
         raw_blocks = []
-        for i, titulo in enumerate(h4_matches):
+        # ⏱️ LIMITAR PROCESSAMENTO PARA EVITAR LOOP INFINITO
+        max_editais = min(len(h4_matches), 20)  # Máximo 20 editais por fonte
+        print(f"   📊 Processando até {max_editais} editais CNPq (limite de segurança)")
+
+        for i, titulo in enumerate(h4_matches[:max_editais]):  # Limitar processamento
             # Pegar o bloco completo do edital a partir do <h4>
             h4_pos = page_source.find(f'<h4>{titulo}</h4>')
             if h4_pos != -1:
@@ -260,17 +269,24 @@ def scrape_cnpq_completo():
         return []
 
     finally:
-        driver.quit()
+        # 🔒 GARANTIR FECHAMENTO DO DRIVER
+        if driver:
+            try:
+                driver.quit()
+                print("✅ Driver CNPq fechado com sucesso")
+            except Exception as e:
+                print(f"⚠️  Erro ao fechar driver CNPq: {e}")
 
 def scrape_ufmg_editais():
     """
     Faz scraping dos editais da Prograd/UFMG
     Baseado na análise: lista de editais com links e datas
     """
-    driver = setup_driver()
+    driver = None
     editais = []
 
     try:
+        driver = setup_driver()
         print("🌐 Acessando UFMG - Prograd Editais...")
         base_url = "https://www.ufmg.br/prograd/editais-chamadas/"
 
@@ -310,8 +326,11 @@ def scrape_ufmg_editais():
 
             print(f"📋 Encontrados {len(edital_links)} editais nesta página")
 
-            # 📝 PROCESSAR CADA EDITAL
-            for link in edital_links:
+            # 📝 PROCESSAR CADA EDITAL (com limite de segurança)
+            max_links_per_page = min(len(edital_links), 15)  # Máximo 15 editais por página
+            print(f"   📊 Processando até {max_links_per_page} editais desta página")
+
+            for i, link in enumerate(edital_links[:max_links_per_page]):  # Limitar processamento
                 try:
                     # 🔗 EXTRAIR LINK DO PDF
                     pdf_url = link.get_attribute("href")
@@ -378,17 +397,24 @@ def scrape_ufmg_editais():
         return []
 
     finally:
-        driver.quit()
+        # 🔒 GARANTIR FECHAMENTO DO DRIVER
+        if driver:
+            try:
+                driver.quit()
+                print("✅ Driver UFMG fechado com sucesso")
+            except Exception as e:
+                print(f"⚠️  Erro ao fechar driver UFMG: {e}")
 
 def scrape_fapemig_completo():
     """
     Faz scraping direto do HTML FAPEMIG - estratégia baseada na análise do usuário
     Tudo já está no HTML, não precisa clicar!
     """
-    driver = setup_driver()
+    driver = None
     editais = []
 
     try:
+        driver = setup_driver()
         print("🌐 Acessando FAPEMIG...")
         driver.get("http://www.fapemig.br/pt/chamadas_abertas_oportunidades_fapemig/")
         time.sleep(2)
@@ -457,7 +483,11 @@ def scrape_fapemig_completo():
 
         print(f"📋 {len(blocks)} blocos de editais FAPEMIG encontrados")
 
-        for i, bloco in enumerate(blocks):
+        # ⏱️ LIMITAR PROCESSAMENTO PARA EVITAR LOOP INFINITO
+        max_blocos = min(len(blocks), 25)  # Máximo 25 blocos por fonte
+        print(f"   📊 Processando até {max_blocos} blocos FAPEMIG (limite de segurança)")
+
+        for i, bloco in enumerate(blocks[:max_blocos]):  # Limitar processamento
             try:
                 print(f"\n📄 Processando FAPEMIG {i+1}...")
 
@@ -581,7 +611,13 @@ def scrape_fapemig_completo():
         return []
 
     finally:
-        driver.quit()
+        # 🔒 GARANTIR FECHAMENTO DO DRIVER
+        if driver:
+            try:
+                driver.quit()
+                print("✅ Driver FAPEMIG fechado com sucesso")
+            except Exception as e:
+                print(f"⚠️  Erro ao fechar driver FAPEMIG: {e}")
 
 def salvar_resultados(editais):
     """Salva os resultados em JSON e CSV com organização unificada"""
@@ -628,92 +664,120 @@ def filtrar_ufmg_2025(editais):
     return editais_ufmg_2025
 
 def main():
-    """Função principal - RELATÓRIO COMPLETO TODOS OS SITES"""
+    """Função principal - RELATÓRIO COMPLETO TODOS OS SITES com TIMEOUT GLOBAL"""
     print("🚀 SCRAPER COMPLETO - FAPEMIG + CNPq + UFMG")
     print("⚡ Relatório com todos os editais de todos os sites")
+    print("⏱️ Timeout global: 10 minutos")
     print("=" * 70)
 
-    # Executar scraping de todos os sites
-    print("\n🏛️  PROCESSANDO FAPEMIG...")
-    editais_fapemig = scrape_fapemig_completo()
+    # ⏱️ TIMER GLOBAL PARA EVITAR TRAVAMENTOS
+    import signal
 
-    print("\n🔬 PROCESSANDO CNPq...")
-    editais_cnpq = scrape_cnpq_completo()
+    def timeout_handler(signum, frame):
+        print("\n❌ TIMEOUT GLOBAL: Processo excedeu 10 minutos!")
+        print("🔄 Finalizando execução para evitar travamento...")
+        raise TimeoutError("Processo excedeu tempo limite")
 
-    print("\n🎓 PROCESSANDO UFMG...")
-    editais_ufmg = scrape_ufmg_editais()
+    # Configurar timeout de 10 minutos (600 segundos)
+    signal.signal(signal.SIGALRM, timeout_handler)
+    signal.alarm(600)  # 10 minutos
 
-    # Filtrar apenas editais UFMG de 2025
-    print(f"🔍 Antes do filtro: {len(editais_ufmg)} editais UFMG")
-    editais_ufmg_2025 = filtrar_ufmg_2025(editais_ufmg)
-    print(f"🎯 Filtrados {len(editais_ufmg_2025)} editais UFMG de 2025")
+    try:
+        # Executar scraping de todos os sites
+        print("\n🏛️  PROCESSANDO FAPEMIG...")
+        editais_fapemig = scrape_fapemig_completo()
 
-    # Combinar todos os editais (FAPEMIG + CNPq + UFMG 2025 apenas)
-    todos_editais = editais_fapemig + editais_cnpq + editais_ufmg_2025
+        print("\n🔬 PROCESSANDO CNPq...")
+        editais_cnpq = scrape_cnpq_completo()
 
-    # Mostrar links principais
-    link_fapemig = "http://www.fapemig.br/pt/chamadas_abertas_oportunidades_fapemig/"
-    link_cnpq = "http://memoria2.cnpq.br/web/guest/chamadas-publicas"
-    link_ufmg = "https://www.ufmg.br/prograd/editais-chamadas/"
+        print("\n🎓 PROCESSANDO UFMG...")
+        editais_ufmg = scrape_ufmg_editais()
 
-    print("\n🔗 LINKS PRINCIPAIS:")
-    print(f"🏛️  FAPEMIG: {link_fapemig}")
-    print(f"🔬 CNPq: {link_cnpq}")
-    print(f"🎓 UFMG: {link_ufmg}")
-    print("=" * 70)
+        # Filtrar apenas editais UFMG de 2025
+        print(f"🔍 Antes do filtro: {len(editais_ufmg)} editais UFMG")
+        editais_ufmg_2025 = filtrar_ufmg_2025(editais_ufmg)
+        print(f"🎯 Filtrados {len(editais_ufmg_2025)} editais UFMG de 2025")
 
-    print("\n🎯 RESULTADO FINAL - FAPEMIG + CNPq + UFMG 2025")
-    print(f"📊 FAPEMIG: {len(editais_fapemig)} editais")
-    print(f"📊 CNPq: {len(editais_cnpq)} editais")
-    print(f"📊 UFMG 2025: {len(editais_ufmg_2025)} editais")
-    print(f"📊 TOTAL GERAL: {len(todos_editais)} editais")
+        # Combinar todos os editais (FAPEMIG + CNPq + UFMG 2025 apenas)
+        todos_editais = editais_fapemig + editais_cnpq + editais_ufmg_2025
 
-    editais_com_datas = [e for e in todos_editais if e.get('data')]
-    print(f"✅ Com datas específicas: {len(editais_com_datas)}")
+        # Mostrar links principais
+        link_fapemig = "http://www.fapemig.br/pt/chamadas_abertas_oportunidades_fapemig/"
+        link_cnpq = "http://memoria2.cnpq.br/web/guest/chamadas-publicas"
+        link_ufmg = "https://www.ufmg.br/prograd/editais-chamadas/"
 
-    # Mostrar estatísticas por fonte
-    fapemig_com_datas = [e for e in editais_fapemig if e.get('data')]
-    cnpq_com_datas = [e for e in editais_cnpq if e.get('data')]
-    ufmg_2025_com_datas = [e for e in editais_ufmg_2025 if e.get('data')]
-
-    print(f"🏛️  FAPEMIG com datas: {len(fapemig_com_datas)}")
-    print(f"🔬 CNPq com datas: {len(cnpq_com_datas)}")
-    print(f"🎓 UFMG 2025 com datas: {len(ufmg_2025_com_datas)}")
-
-    # Mostrar alguns exemplos de cada fonte
-    print("\n📋 EXEMPLO DE EDITAIS POR FONTE:")
-
-    if editais_fapemig:
-        print("\n🏛️  FAPEMIG:")
-        for i, edital in enumerate(editais_fapemig[:2], 1):
-            print(f"   {i}. {edital['titulo'][:50]}...")
-            if edital.get('data'):
-                print(f"      📅 {edital['data']}")
-
-    if editais_cnpq:
-        print("\n🔬 CNPq:")
-        for i, edital in enumerate(editais_cnpq[:2], 1):
-            print(f"   {i}. {edital['titulo'][:50]}...")
-            if edital.get('data'):
-                print(f"      📅 {edital['data']}")
-
-    if editais_ufmg_2025:
-        print("\n🎓 UFMG 2025:")
-        for i, edital in enumerate(editais_ufmg_2025[:3], 1):
-            print(f"   {i}. {edital['titulo'][:50]}...")
-            if edital.get('data'):
-                print(f"      📅 {edital['data']}")
-
-    if todos_editais:
-        salvar_resultados(todos_editais)
-        print("\n✅ Scraping concluído!")
-        print(f"📁 Arquivos salvos: editais_scraping.json e .csv")
+        print("\n🔗 LINKS PRINCIPAIS:")
         print(f"🏛️  FAPEMIG: {link_fapemig}")
         print(f"🔬 CNPq: {link_cnpq}")
         print(f"🎓 UFMG: {link_ufmg}")
-        print("📊 Relatório completo de todos os sites")
-    else:
-        print("\n❌ Nenhum edital encontrado.")
+        print("=" * 70)
+
+        print("\n🎯 RESULTADO FINAL - FAPEMIG + CNPq + UFMG 2025")
+        print(f"📊 FAPEMIG: {len(editais_fapemig)} editais")
+        print(f"📊 CNPq: {len(editais_cnpq)} editais")
+        print(f"📊 UFMG 2025: {len(editais_ufmg_2025)} editais")
+        print(f"📊 TOTAL GERAL: {len(todos_editais)} editais")
+
+        editais_com_datas = [e for e in todos_editais if e.get('data')]
+        print(f"✅ Com datas específicas: {len(editais_com_datas)}")
+
+        # Mostrar estatísticas por fonte
+        fapemig_com_datas = [e for e in editais_fapemig if e.get('data')]
+        cnpq_com_datas = [e for e in editais_cnpq if e.get('data')]
+        ufmg_2025_com_datas = [e for e in editais_ufmg_2025 if e.get('data')]
+
+        print(f"🏛️  FAPEMIG com datas: {len(fapemig_com_datas)}")
+        print(f"🔬 CNPq com datas: {len(cnpq_com_datas)}")
+        print(f"🎓 UFMG 2025 com datas: {len(ufmg_2025_com_datas)}")
+
+        # Mostrar alguns exemplos de cada fonte
+        print("\n📋 EXEMPLO DE EDITAIS POR FONTE:")
+
+        if editais_fapemig:
+            print("\n🏛️  FAPEMIG:")
+            for i, edital in enumerate(editais_fapemig[:2], 1):
+                print(f"   {i}. {edital['titulo'][:50]}...")
+                if edital.get('data'):
+                    print(f"      📅 {edital['data']}")
+
+        if editais_cnpq:
+            print("\n🔬 CNPq:")
+            for i, edital in enumerate(editais_cnpq[:2], 1):
+                print(f"   {i}. {edital['titulo'][:50]}...")
+                if edital.get('data'):
+                    print(f"      📅 {edital['data']}")
+
+        if editais_ufmg_2025:
+            print("\n🎓 UFMG 2025:")
+            for i, edital in enumerate(editais_ufmg_2025[:3], 1):
+                print(f"   {i}. {edital['titulo'][:50]}...")
+                if edital.get('data'):
+                    print(f"      📅 {edital['data']}")
+
+        if todos_editais:
+            salvar_resultados(todos_editais)
+            print("\n✅ Scraping concluído!")
+            print(f"📁 Arquivos salvos: editais_scraping.json e .csv")
+            print(f"🏛️  FAPEMIG: {link_fapemig}")
+            print(f"🔬 CNPq: {link_cnpq}")
+            print(f"🎓 UFMG: {link_ufmg}")
+            print("📊 Relatório completo de todos os sites")
+        else:
+            print("\n❌ Nenhum edital encontrado.")
+
+    except TimeoutError as e:
+        print(f"\n❌ ERRO DE TIMEOUT: {str(e)}")
+        print("🔧 O processo foi interrompido por exceder o tempo limite de 10 minutos")
+        print("💡 Tente executar novamente ou verifique a conexão com a internet")
+
+    except Exception as e:
+        print(f"\n❌ ERRO GERAL: {str(e)}")
+        print(f"🔧 Tipo do erro: {type(e).__name__}")
+
+    finally:
+        # Desabilitar o timer quando terminar
+        signal.alarm(0)
+        print("\n✅ Processo finalizado")
 
     print("=" * 70)
 

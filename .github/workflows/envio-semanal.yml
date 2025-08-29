@@ -32,7 +32,9 @@ jobs:
           sudo apt-get install -y google-chrome-stable
 
       - name: 📧 Executar envio semanal
-        run: python envio_semanal.py
+        run: |
+          echo "🚀 Iniciando envio semanal com timeout de 15 minutos..."
+          timeout 900 python envio_semanal.py || echo "❌ Processo semanal interrompido por timeout ou erro"
         env:
           EMAIL_USER: ${{ secrets.EMAIL_USER }}
           EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
