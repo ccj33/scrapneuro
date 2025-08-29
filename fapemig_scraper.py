@@ -403,37 +403,57 @@ def scrape_fapemig_completo():
         #     f.write(page_source)
         # print("   📄 HTML salvo em debug_fapemig.html para análise")
 
-        # 🔍 PROCURAR BLOCOS DE EDITAIS NO HTML (estrutura real descoberta!)
-        # Quebrar por '<h1 class="text-uppercase text-secondary h6">' - cada bloco é um edital
-        h1_pattern = r'<h1 class="text-uppercase text-secondary h6">(.*?)</h1>'
-        h1_matches = re.findall(h1_pattern, page_source, re.DOTALL)
+        # 🔍 PROCURAR BLOCOS DE EDITAIS NO HTML (estrutura mais flexível)
+        # Tentar diferentes padrões de h1 que podem conter editais
+        h1_patterns = [
+            r'<h1[^>]*class="[^"]*text-uppercase[^"]*"[^>]*>(.*?)</h1>',  # Padrão original
+            r'<h1[^>]*class="[^"]*h6[^"]*"[^>]*>(.*?)</h1>',              # Apenas h6
+            r'<h1[^>]*class="[^"]*text-secondary[^"]*"[^>]*>(.*?)</h1>',  # Apenas text-secondary
+            r'<h1[^>]*>(.*?)</h1>',                                        # QUALQUER h1
+        ]
+        
+        h1_matches = []
+        for pattern in h1_patterns:
+            matches = re.findall(pattern, page_source, re.DOTALL | re.IGNORECASE)
+            if matches:
+                h1_matches = matches
+                print(f"   ✅ Padrão encontrado: {pattern[:50]}...")
+                break
 
         blocks = []
         for i, h1_content in enumerate(h1_matches):
-            # Encontrar a posição do h1 no HTML
-            h1_pos = page_source.find(f'<h1 class="text-uppercase text-secondary h6">{h1_content}</h1>')
+            # Encontrar a posição do h1 no HTML (mais flexível)
+            h1_pos = page_source.find(f'<h1', h1_pos if 'h1_pos' in locals() else 0)
             if h1_pos != -1:
-                # Pegar o bloco completo a partir do h1
-                block_start = h1_pos
+                # Encontrar o h1 completo
+                h1_end = page_source.find('</h1>', h1_pos)
+                if h1_end != -1:
+                    h1_full = page_source[h1_pos:h1_end + 6]  # +6 para incluir </h1>
+                    
+                    # Pegar o bloco completo a partir do h1
+                    block_start = h1_pos
 
-                # Encontrar o próximo h1 ou o fim do accordion
-                next_h1_pos = page_source.find('<h1 class="text-uppercase text-secondary h6">', h1_pos + 1)
-                if next_h1_pos != -1:
-                    block_content = page_source[block_start:next_h1_pos]
-                else:
-                    # Último edital - pegar até o fim do accordion
-                    accordion_end = page_source.find('</div>', h1_pos)
-                    if accordion_end != -1:
-                        # Procurar o fim do accordion (várias possibilidades)
-                        end_patterns = ['</div></div></div></div>', '</div></div></div>', '</div></div>']
-                        for pattern in end_patterns:
-                            end_pos = page_source.find(pattern, h1_pos)
-                            if end_pos != -1:
-                                accordion_end = end_pos + len(pattern)
-                                break
-                    block_content = page_source[block_start:accordion_end]
+                    # Encontrar o próximo h1 ou o fim do accordion
+                    next_h1_pos = page_source.find('<h1', h1_pos + 1)
+                    if next_h1_pos != -1:
+                        block_content = page_source[block_start:next_h1_pos]
+                    else:
+                        # Último edital - pegar até o fim do accordion
+                        accordion_end = page_source.find('</div>', h1_pos)
+                        if accordion_end != -1:
+                            # Procurar o fim do accordion (várias possibilidades)
+                            end_patterns = ['</div></div></div></div>', '</div></div></div>', '</div></div>']
+                            for pattern in end_patterns:
+                                end_pos = page_source.find(pattern, h1_pos)
+                                if end_pos != -1:
+                                    accordion_end = end_pos + len(pattern)
+                                    break
+                        block_content = page_source[block_start:accordion_end]
 
-                blocks.append(f'<h1 class="text-uppercase text-secondary h6">{h1_content}</h1>{block_content}')
+                    blocks.append(h1_full + block_content)
+                    
+                    # Atualizar posição para próximo h1
+                    h1_pos = h1_pos + 1
 
         print(f"📋 {len(blocks)} blocos de editais FAPEMIG encontrados")
 
