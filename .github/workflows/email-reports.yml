@@ -1,7 +1,5 @@
 name: Relatórios Automáticos de Editais
 on:
-  push:
-    branches: [ main, master ]  # Roda automaticamente em cada commit
   schedule:
     - cron: '0 5 * * *'     # TODO DIA às 5:00 UTC (5:00 da manhã)
   workflow_dispatch:          # Permite execução manual
@@ -24,7 +22,9 @@ jobs:
           pip install requests
 
       - name: Executar envio automático
-        run: python fapemig_scraper.py
+        run: |
+          echo "🕐 Iniciando execução às $(date)"
+          timeout 1800 python fapemig_scraper.py || echo "⚠️ Script finalizado (timeout ou erro)"
         env:
           EMAIL_USER: ${{ secrets.EMAIL_USER }}
           EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}

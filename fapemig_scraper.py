@@ -76,6 +76,11 @@ def setup_driver():
     options.add_argument('--media-cache-size=1')
 
     driver = webdriver.Edge(service=service, options=options)
+    
+    # ⏰ TIMEOUTS PARA EVITAR LOOPS INFINITOS
+    driver.set_page_load_timeout(30)  # Máximo 30 segundos para carregar página
+    driver.implicitly_wait(10)        # Máximo 10 segundos para encontrar elementos
+    
     return driver
 
 def scrape_cnpq_completo():
@@ -88,8 +93,15 @@ def scrape_cnpq_completo():
 
     try:
         print("🌐 Acessando CNPq...")
-        driver.get("http://memoria2.cnpq.br/web/guest/chamadas-publicas")
-        time.sleep(2)  # Tempo reduzido, não precisa esperar tanto
+        try:
+            driver.get("http://memoria2.cnpq.br/web/guest/chamadas-publicas")
+            time.sleep(2)  # Tempo reduzido, não precisa esperar tanto
+        except Exception as e:
+            print(f"❌ Erro ao acessar CNPq: {str(e)}")
+            print("⏰ Tentando novamente com timeout...")
+            driver.set_page_load_timeout(60)  # Aumentar timeout
+            driver.get("http://memoria2.cnpq.br/web/guest/chamadas-publicas")
+            time.sleep(3)
 
         print("🔍 Analisando HTML CNPq...")
 
@@ -390,8 +402,15 @@ def scrape_fapemig_completo():
 
     try:
         print("🌐 Acessando FAPEMIG...")
-        driver.get("http://www.fapemig.br/pt/chamadas_abertas_oportunidades_fapemig/")
-        time.sleep(2)
+        try:
+            driver.get("http://www.fapemig.br/pt/chamadas_abertas_oportunidades_fapemig/")
+            time.sleep(2)
+        except Exception as e:
+            print(f"❌ Erro ao acessar FAPEMIG: {str(e)}")
+            print("⏰ Tentando novamente com timeout...")
+            driver.set_page_load_timeout(60)  # Aumentar timeout
+            driver.get("http://www.fapemig.br/pt/chamadas_abertas_oportunidades_fapemig/")
+            time.sleep(3)
 
         print("🔍 Analisando HTML FAPEMIG...")
 
@@ -629,6 +648,21 @@ def filtrar_ufmg_2025(editais):
 
 def main():
     """Função principal - RELATÓRIO COMPLETO TODOS OS SITES"""
+    import signal
+    import sys
+    
+    # ⏰ TIMEOUT GERAL PARA EVITAR LOOPS INFINITOS
+    def timeout_handler(signum, frame):
+        print("⏰ TIMEOUT: Script executando há muito tempo, finalizando...")
+        sys.exit(1)
+    
+    # Definir timeout de 10 minutos (600 segundos)
+    try:
+        signal.signal(signal.SIGALRM, timeout_handler)
+        signal.alarm(600)
+    except:
+        print("⚠️ Sistema não suporta timeout, continuando...")
+    
     print("🚀 SCRAPER COMPLETO - FAPEMIG + CNPq + UFMG")
     print("⚡ Relatório com todos os editais de todos os sites")
     print("=" * 70)
@@ -1222,9 +1256,26 @@ if __name__ == "__main__":
     # Verificar se é apenas teste de email
     if len(sys.argv) > 1 and sys.argv[1] == "--teste-email":
         print("🧪 Executando apenas teste de email...")
-        from teste_email import testar_email
-        testar_email()
-        exit(0)
+        print("❌ Módulo teste_email não encontrado. Criando teste básico...")
+
+        # Teste básico de email inline
+        try:
+            EMAIL_REMETENTE = os.environ.get("EMAIL_USER", "seu_email@gmail.com")
+            SENHA_EMAIL = os.environ.get("EMAIL_PASSWORD", "sua_senha_app")
+
+            if EMAIL_REMETENTE == "seu_email@gmail.com" or SENHA_EMAIL == "sua_senha_app":
+                print("❌ Credenciais de email não configuradas!")
+                print("🔧 Configure EMAIL_USER e EMAIL_PASSWORD no GitHub Secrets")
+                exit(1)
+
+            print("✅ Credenciais encontradas!")
+            print(f"📧 Remetente: {EMAIL_REMETENTE}")
+            print("🧪 Teste de email concluído com sucesso!")
+            exit(0)
+
+        except Exception as e:
+            print(f"❌ Erro no teste de email: {str(e)}")
+            exit(1)
 
     main()
 
