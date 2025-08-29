@@ -815,14 +815,19 @@ def enviar_relatorio_automatico():
 
     # 📧 CONFIGURAÇÃO DOS DESTINATÁRIOS
     EMAIL_DIARIO = "ccjota51@gmail.com"        # Recebe TODO DIA
-    EMAIL_SEMANAL = "clevioferreira@gmail.com" # Recebe TODO DIA
+    EMAILS_SEMANAIS = [
+        "mirelle_celiane@hotmail.com",
+        "clevioferreira@gmail.com", 
+        "gustavo.augustoprs@gmail.com",
+        "laviniagudulaufmg@gmail.com"
+    ]
 
     print(f"📧 Email diário: {EMAIL_DIARIO}")
-    print(f"📧 Email semanal: {EMAIL_SEMANAL}")
+    print(f"📧 Emails semanais: {len(EMAILS_SEMAIS)} pessoas")
 
     # ✅ ENVIO DIÁRIO ATIVADO (workflow roda todo dia às 5:00)
     deve_enviar_diario = True   # TODO DIA
-    deve_enviar_semanal = True  # TODO DIA
+    deve_enviar_semanal = (dia_semana == 0)  # APENAS SEGUNDA-FEIRA (0)
 
     print(f"📧 Deve enviar relatório diário: {deve_enviar_diario}")
     print(f"📧 Deve enviar relatório semanal: {deve_enviar_semanal}")
@@ -863,18 +868,25 @@ def enviar_relatorio_automatico():
             else:
                 print("❌ Falha ao enviar relatório diário!")
 
-        # 📧 Toda segunda-feira
+        # 📧 Toda segunda-feira (para 4 pessoas)
         if deve_enviar_semanal:
-            print("\n📧 ENVIANDO RELATÓRIO SEMANAL...")
+            print(f"\n📧 ENVIANDO RELATÓRIO SEMANAL para {len(EMAILS_SEMAIS)} pessoas...")
             assunto = f"📊 RELATÓRIO SEMANAL - FAPEMIG + CNPq + UFMG 2025 - Semana {hoje.strftime('%d/%m/%Y')}"
 
             corpo_email = criar_corpo_email_semanal_completo(todos_editais, hoje, editais_fapemig, editais_cnpq, editais_ufmg_2025)
-            sucesso = enviar_email(EMAIL_SEMANAL, assunto, corpo_email)
-
-            if sucesso:
-                print("✅ Relatório semanal enviado com sucesso!")
-            else:
-                print("❌ Falha ao enviar relatório semanal!")
+            
+            # Enviar para cada pessoa da lista semanal
+            emails_enviados = 0
+            for email in EMAILS_SEMAIS:
+                print(f"   📧 Enviando para: {email}")
+                sucesso = enviar_email(email, assunto, corpo_email)
+                if sucesso:
+                    print(f"   ✅ Enviado com sucesso para: {email}")
+                    emails_enviados += 1
+                else:
+                    print(f"   ❌ Falha ao enviar para: {email}")
+            
+            print(f"📊 RESUMO SEMANAL: {emails_enviados}/{len(EMAILS_SEMAIS)} emails enviados com sucesso!")
 
     except Exception as e:
         print(f"❌ ERRO GERAL no envio automático: {str(e)}")
