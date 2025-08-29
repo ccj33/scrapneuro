@@ -13,6 +13,7 @@ import json
 import re
 import time
 import csv
+from bs4 import BeautifulSoup
 
 def setup_driver():
     """Configura o driver do Edge para scraping ULTRA-RÁPIDO em modo headless com TIMEOUTS"""
@@ -407,217 +408,194 @@ def scrape_ufmg_editais():
 
 def scrape_fapemig_completo():
     """
-    Faz scraping direto do HTML FAPEMIG - estratégia baseada na análise do usuário
-    Tudo já está no HTML, não precisa clicar!
+    🆕 SCRAPING DO SITE NOVO DA FAPEMIG (2025)
+    Site: https://fapemig.br/oportunidades/chamadas-e-editais
     """
     driver = None
     editais = []
 
     try:
         driver = setup_driver()
-        print("🌐 Acessando FAPEMIG...")
-        driver.get("http://www.fapemig.br/pt/chamadas_abertas_oportunidades_fapemig/")
-        time.sleep(2)
+        print("🌐 Acessando NOVO site FAPEMIG...")
+        driver.get("https://fapemig.br/oportunidades/chamadas-e-editais")
+        time.sleep(5)  # Aguardar carregamento completo
 
-        print("🔍 Analisando HTML FAPEMIG...")
-
-        # 🎯 PEGAR TODO O HTML DA PÁGINA (como você sugeriu!)
+        print("🔍 Analisando HTML do site novo...")
         page_source = driver.page_source
 
-        # 💾 Salvar HTML para debug (OPCIONAL - remover se não precisar)
-        # with open('debug_fapemig.html', 'w', encoding='utf-8') as f:
-        #     f.write(page_source)
-        # print("   📄 HTML salvo em debug_fapemig.html para análise")
+        # 💾 Salvar HTML para debug
+        with open('debug_fapemig_novo.html', 'w', encoding='utf-8') as f:
+            f.write(page_source)
+        print("   📄 HTML salvo em debug_fapemig_novo.html")
 
-        # 🔍 PROCURAR BLOCOS DE EDITAIS NO HTML (estrutura mais flexível)
-        # Tentar diferentes padrões de h1 que podem conter editais
-        h1_patterns = [
-            r'<h1[^>]*class="[^"]*text-uppercase[^"]*"[^>]*>(.*?)</h1>',  # Padrão original
-            r'<h1[^>]*class="[^"]*h6[^"]*"[^>]*>(.*?)</h1>',              # Apenas h6
-            r'<h1[^>]*class="[^"]*text-secondary[^"]*"[^>]*>(.*?)</h1>',  # Apenas text-secondary
-            r'<h1[^>]*>(.*?)</h1>',                                        # QUALQUER h1
-        ]
+        # 🎯 PROCURAR CARDS DE EDITAIS NO SITE NOVO
+        soup = BeautifulSoup(page_source, 'html.parser')
         
-        h1_matches = []
-        for pattern in h1_patterns:
-            matches = re.findall(pattern, page_source, re.DOTALL | re.IGNORECASE)
-            if matches:
-                h1_matches = matches
-                print(f"   ✅ Padrão encontrado: {pattern[:50]}...")
+        # Procurar por diferentes padrões de cards
+        card_selectors = [
+            'div[class*="card"]',
+            'div[class*="edital"]', 
+            'div[class*="chamada"]',
+            'section[class*="card"]',
+            'article[class*="card"]'
+        ]
+
+        cards_encontrados = []
+        for selector in card_selectors:
+            cards = soup.select(selector)
+            if cards:
+                print(f"   ✅ Encontrados {len(cards)} cards com selector: {selector}")
+                cards_encontrados = cards
                 break
 
-        blocks = []
-        for i, h1_content in enumerate(h1_matches):
-            # Encontrar a posição do h1 no HTML (mais flexível)
-            h1_pos = page_source.find(f'<h1', h1_pos if 'h1_pos' in locals() else 0)
-            if h1_pos != -1:
-                # Encontrar o h1 completo
-                h1_end = page_source.find('</h1>', h1_pos)
-                if h1_end != -1:
-                    h1_full = page_source[h1_pos:h1_end + 6]  # +6 para incluir </h1>
-                    
-                    # Pegar o bloco completo a partir do h1
-                    block_start = h1_pos
+        if not cards_encontrados:
+            # Fallback: procurar por texto que contenha "Chamada" ou "Edital"
+            print("   🔍 Procurando por texto 'Chamada' ou 'Edital'...")
+            elementos_com_chamada = soup.find_all(string=lambda text: text and any(palavra in text.lower() for palavra in ['chamada', 'edital', 'fapemig']))
+            
+            for elemento in elementos_com_chamada:
+                # Pegar o elemento pai (card)
+                card = elemento.find_parent(['div', 'section', 'article'])
+                if card and card not in cards_encontrados:
+                    cards_encontrados.append(card)
 
-                    # Encontrar o próximo h1 ou o fim do accordion
-                    next_h1_pos = page_source.find('<h1', h1_pos + 1)
-                    if next_h1_pos != -1:
-                        block_content = page_source[block_start:next_h1_pos]
-                    else:
-                        # Último edital - pegar até o fim do accordion
-                        accordion_end = page_source.find('</div>', h1_pos)
-                        if accordion_end != -1:
-                            # Procurar o fim do accordion (várias possibilidades)
-                            end_patterns = ['</div></div></div></div>', '</div></div></div>', '</div></div>']
-                            for pattern in end_patterns:
-                                end_pos = page_source.find(pattern, h1_pos)
-                                if end_pos != -1:
-                                    accordion_end = end_pos + len(pattern)
-                                    break
-                        block_content = page_source[block_start:accordion_end]
+        print(f"📋 {len(cards_encontrados)} cards de editais encontrados")
 
-                    blocks.append(h1_full + block_content)
-                    
-                    # Atualizar posição para próximo h1
-                    h1_pos = h1_pos + 1
+        # ⏱️ LIMITAR PROCESSAMENTO
+        max_cards = min(len(cards_encontrados), 30)
+        print(f"   📊 Processando até {max_cards} cards (limite de segurança)")
 
-        print(f"📋 {len(blocks)} blocos de editais FAPEMIG encontrados")
-
-        # ⏱️ LIMITAR PROCESSAMENTO PARA EVITAR LOOP INFINITO
-        max_blocos = min(len(blocks), 25)  # Máximo 25 blocos por fonte
-        print(f"   📊 Processando até {max_blocos} blocos FAPEMIG (limite de segurança)")
-
-        for i, bloco in enumerate(blocks[:max_blocos]):  # Limitar processamento
+        for i, card in enumerate(cards_encontrados[:max_cards]):
             try:
-                print(f"\n📄 Processando FAPEMIG {i+1}...")
+                print(f"\n📄 Processando card FAPEMIG {i+1}...")
 
-                # 🧹 LIMPAR O HTML DO BLOCO INTEIRO
-                from bs4 import BeautifulSoup
-                soup = BeautifulSoup(bloco, 'html.parser')
-                expanded_text = soup.get_text(separator=' ', strip=True)
-
-                print(f"   📝 Debug - Texto do bloco ({len(expanded_text)} chars): {expanded_text[:200]}...")
-
-                # 🎯 EXTRAIR TÍTULO COMPLETO do h1 (incluindo texto após o <strong>)
+                # 🎯 EXTRAIR TÍTULO
                 titulo = ""
-                # Pegar TODO o conteúdo do h1, não só o <strong>
-                h1_match = re.search(r'<h1[^>]*>(.*?)</h1>', bloco, re.DOTALL | re.IGNORECASE)
-                if h1_match:
-                    # Usar BeautifulSoup para limpar HTML e pegar todo o texto
-                    h1_soup = BeautifulSoup(h1_match.group(1), "html.parser")
-                    titulo = h1_soup.get_text(separator=" ", strip=True)
-                else:
-                    # Fallback: tentar pegar o <strong> se não encontrar h1
-                    strong_match = re.search(r'<strong[^>]*>([^<]+)</strong>', bloco)
-                    if strong_match:
-                        titulo = strong_match.group(1).strip()
+                # Procurar por diferentes tipos de título
+                titulo_selectors = ['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'strong', 'b']
+                
+                for selector in titulo_selectors:
+                    titulo_elem = card.find(selector)
+                    if titulo_elem and titulo_elem.get_text(strip=True):
+                        titulo = titulo_elem.get_text(strip=True)
+                        if len(titulo) > 10:  # Título válido
+                            break
 
-                print(f"   📝 Título encontrado: {titulo[:60]}...")
+                # Se não encontrou título, pegar texto destacado
+                if not titulo:
+                    texto_completo = card.get_text(separator=' ', strip=True)
+                    linhas = texto_completo.split('\n')
+                    for linha in linhas[:5]:  # Primeiras 5 linhas
+                        if len(linha.strip()) > 15 and any(palavra in linha.lower() for palavra in ['chamada', 'edital', 'fapemig', '2025']):
+                            titulo = linha.strip()
+                            break
 
-                # 🔗 EXTRAIR LINKS DE ANEXOS (PDF, DOCX)
-                anexo_links = []
-                anexo_pattern = r'href="([^"]*\.(?:pdf|docx?|PDF|DOCX?)[^"]*)"'
-                anexo_matches = re.findall(anexo_pattern, bloco, re.IGNORECASE)
+                print(f"   📝 Título: {titulo[:60]}...")
 
-                for anexo in anexo_matches:
-                    if anexo.startswith('/'):
-                        anexo = "http://www.fapemig.br" + anexo
-                    elif not anexo.startswith('http'):
-                        anexo = "http://www.fapemig.br/pt/" + anexo
-                    anexo_links.append(anexo)
-
-                print(f"   📎 Anexos encontrados: {len(anexo_links)}")
-
-                # 📅 EXTRAIR DATAS DO BLOCO INTEIRO
+                # 📅 EXTRAIR DATAS
                 datas_encontradas = []
+                texto_card = card.get_text()
+                
+                # Padrões de data para o site novo
                 data_patterns = [
-                    r'Data da Inclusão[:\s]*(\d{1,2}[/-]\d{1,2}[/-]\d{4})',
-                    r'Prazo final[:\s]*(\d{1,2}[/-]\d{1,2}[/-]\d{4})',
-                    r'Inclusão[:\s]*(\d{1,2}[/-]\d{1,2}[/-]\d{4})',
-                    r'submissão[:\s]*(\d{1,2}[/-]\d{1,2}[/-]\d{4})',
-                    r'encerramento[:\s]*(\d{1,2}[/-]\d{1,2}[/-]\d{4})',
-                    r'prazo[:\s]*(\d{1,2}[/-]\d{1,2}[/-]\d{4})',
-                    r'até[:\s]*(\d{1,2}[/-]\d{1,2}[/-]\d{4})',
-                    r'limite[:\s]*(\d{1,2}[/-]\d{1,2}[/-]\d{4})',
-                    r'de[:\s]*(\d{1,2}[/-]\d{1,2}[/-]\d{4})',
-                    r'(\d{1,2}[/-]\d{1,2}[/-]\d{4})',
-                    r'(\d{1,2}\s+de\s+\w+\s+de\s+\d{4})',
+                    r'submissão até (\d{1,2}/\d{1,2}/\d{4})',
+                    r'Submissão até (\d{1,2}/\d{1,2}/\d{4})',
+                    r'prazo.*?(\d{1,2}/\d{1,2}/\d{4})',
+                    r'até (\d{1,2}/\d{1,2}/\d{4})',
+                    r'(\d{1,2}/\d{1,2}/\d{4})',
+                    r'(\d{1,2}\s+de\s+\w+\s+de\s+\d{4})'
                 ]
 
                 for pattern in data_patterns:
-                    matches = re.findall(pattern, bloco, re.IGNORECASE)
+                    matches = re.findall(pattern, texto_card, re.IGNORECASE)
                     for match in matches:
-                        if isinstance(match, tuple):
-                            for item in match:
-                                if item and item.strip():
-                                    datas_encontradas.append(item.strip())
-                                    break
-                        else:
-                            if match and match.strip():
-                                datas_encontradas.append(match.strip())
+                        if match and match.strip():
+                            datas_encontradas.append(match.strip())
 
-                # 📝 EXTRAIR DESCRIÇÃO DO BLOCO
-                descricao_encontrada = ""
-                # Procurar parágrafos relevantes no texto expandido
-                sentences = expanded_text.split('.')
+                # 💰 EXTRAIR VALORES
+                valor = ""
+                valor_patterns = [
+                    r'R\$\s*([\d.,]+)',
+                    r'R\$\s*([\d.,]+)\s*milhões?',
+                    r'R\$\s*([\d.,]+)\s*mil',
+                    r'([\d.,]+)\s*milhões?',
+                    r'([\d.,]+)\s*mil'
+                ]
+
+                for pattern in valor_patterns:
+                    match = re.search(pattern, texto_card, re.IGNORECASE)
+                    if match:
+                        valor = match.group(0)
+                        break
+
+                # 📝 EXTRAIR DESCRIÇÃO
+                descricao = ""
+                texto_limpo = card.get_text(separator=' ', strip=True)
+                sentences = texto_limpo.split('.')
+                
                 for sentence in sentences:
                     sentence = sentence.strip()
-                    if (len(sentence) > 30 and len(sentence) < 400 and
+                    if (len(sentence) > 30 and len(sentence) < 300 and
                         not any(skip_word in sentence.lower() for skip_word in [
                             'http', 'www.', '.br', 'email:', 'telefone:', 'endereço',
-                            'cep', 'belo horizonte', 'av.', 'rua', 'transparência',
-                            'institucional', 'serviços', 'fale conosco', 'data da inclusão',
-                            'prazo final', 'anexo', 'arquivo', '.pdf', '.docx', '.doc'
+                            'cep', 'belo horizonte', 'av.', 'rua', 'transparência'
                         ])):
                         if any(keyword in sentence.lower() for keyword in [
                             'edital', 'chamada', 'processo', 'programa', 'pesquisa',
-                            'inovação', 'desenvolvimento', 'tecnologia', 'científica',
-                            'submissão', 'proposta', 'seleção', 'credenciamento', 'evento',
-                            'convocação', 'seleção', 'apoiar', 'fomentar', 'financiar'
+                            'inovação', 'desenvolvimento', 'tecnologia', 'científica'
                         ]):
-                            descricao_encontrada = sentence[:300] + "..." if len(sentence) > 300 else sentence
+                            descricao = sentence[:250] + "..." if len(sentence) > 250 else sentence
                             break
 
-                # 🔗 LINK PRINCIPAL FAPEMIG
-                link_principal = "http://www.fapemig.br/pt/chamadas_abertas_oportunidades_fapemig/"
+                # 🔗 LINKS
+                links = []
+                for link in card.find_all('a', href=True):
+                    href = link['href']
+                    if href.startswith('/'):
+                        href = "https://fapemig.br" + href
+                    elif not href.startswith('http'):
+                        href = "https://fapemig.br/" + href
+                    links.append(href)
 
-                # 🎯 CRIAR ENTRADA FAPEMIG POR BLOCO
-                if titulo:  # Só adiciona se encontrou um título válido
+                # 🎯 CRIAR ENTRADA FAPEMIG NOVA
+                if titulo:  # Só adiciona se encontrou título
                     edital_info = {
                         'titulo': titulo,
                         'data': ', '.join(set(datas_encontradas)) if datas_encontradas else '',
-                        'descricao': descricao_encontrada,
-                        'url': link_principal,
-                        'anexos': '; '.join(anexo_links) if anexo_links else '',
-                        'fonte': 'fapemig_blocos'
+                        'valor': valor,
+                        'descricao': descricao,
+                        'url': links[0] if links else "https://fapemig.br/oportunidades/chamadas-e-editais",
+                        'links': '; '.join(links) if links else '',
+                        'fonte': 'fapemig_novo_2025'
                     }
 
                     editais.append(edital_info)
 
-                    print("   ✅ Bloco processado!")
+                    print("   ✅ Card processado!")
                     print(f"   📅 Datas: {len(set(datas_encontradas))}")
-                    for data in set(datas_encontradas):
-                        print(f"      - {data}")
+                    if valor:
+                        print(f"   💰 Valor: {valor}")
+                    if descricao:
+                        print(f"   📝 Descrição: {descricao[:50]}...")
 
             except Exception as e:
-                print(f"   ❌ Erro ao processar bloco FAPEMIG {i+1}: {str(e)}")
+                print(f"   ❌ Erro ao processar card {i+1}: {str(e)}")
                 continue
 
-        print(f"\n🎉 FAPEMIG concluído: {len(editais)} editais processados com sucesso!")
+        print(f"\n🎉 FAPEMIG NOVO concluído: {len(editais)} editais processados!")
         return editais
 
     except Exception as e:
-        print(f"❌ Erro geral FAPEMIG: {str(e)}")
+        print(f"❌ Erro geral FAPEMIG NOVO: {str(e)}")
         return []
 
     finally:
-        # 🔒 GARANTIR FECHAMENTO DO DRIVER
         if driver:
             try:
                 driver.quit()
-                print("✅ Driver FAPEMIG fechado com sucesso")
+                print("✅ Driver FAPEMIG NOVO fechado")
             except Exception as e:
-                print(f"⚠️  Erro ao fechar driver FAPEMIG: {e}")
+                print(f"⚠️  Erro ao fechar driver: {e}")
 
 def salvar_resultados(editais):
     """Salva os resultados em JSON e CSV com organização unificada"""
