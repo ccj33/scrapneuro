@@ -1,10 +1,10 @@
-name: Relatórios Automáticos de Editais
+name: Relatorios Automaticos de Editais
 on:
   push:
     branches: [ main, master ]  # Roda automaticamente em cada commit
   schedule:
-    - cron: '0 5 * * *'     # TODO DIA às 5:00 UTC (5:00 da manhã)
-  workflow_dispatch:          # Permite execução manual
+    - cron: '0 5 * * *'     # TODO DIA as 5:00 UTC (5:00 da manha)
+  workflow_dispatch:          # Permite execucao manual
 
 jobs:
   enviar-relatorio:
@@ -17,16 +17,16 @@ jobs:
         with:
           python-version: '3.9'
 
-      - name: Instalar dependências
+      - name: Instalar dependencias
         run: |
           pip install selenium
           pip install beautifulsoup4
           pip install requests
 
-      - name: Executar envio automático
+      - name: Executar envio automatico
         run: |
-          echo "🚀 Iniciando scraping com timeout de 10 minutos..."
-          timeout 600 python fapemig_scraper.py || echo "❌ Processo interrompido por timeout ou erro"
+          echo "Iniciando scraping com timeout de 10 minutos..."
+          timeout 600 python fapemig_scraper.py || echo "Processo interrompido por timeout ou erro"
         env:
           EMAIL_USER: ${{ secrets.EMAIL_USER }}
           EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}

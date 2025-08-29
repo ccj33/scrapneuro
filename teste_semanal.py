@@ -46,8 +46,8 @@ def main():
     for i, email in enumerate(DESTINATARIOS_SEMANAIS, 1):
         print(f"   {i}. {email}")
 
-    print("
-⚠️  ATENÇÃO: Este é um teste!"    print("📧 Os emails serão enviados REALMENTE para os destinatários!")
+    print("\n⚠️  ATENÇÃO: Este é um teste!")
+    print("📧 Os emails serão enviados REALMENTE para os destinatários!")
     resposta = input("\n❓ Deseja continuar com o teste? (s/N): ").lower().strip()
 
     if resposta not in ['s', 'sim', 'y', 'yes']:
@@ -76,8 +76,8 @@ def main():
         # Combinar todos os editais
         todos_editais = editais_fapemig + editais_cnpq + editais_ufmg_2025
 
-        print("
-📊 RESUMO DOS EDITAIS ENCONTRADOS NO TESTE:"        print(f"   🏛️  FAPEMIG: {len(editais_fapemig)} editais")
+        print("\n📊 RESUMO DOS EDITAIS ENCONTRADOS NO TESTE:")
+        print(f"   🏛️  FAPEMIG: {len(editais_fapemig)} editais")
         print(f"   🔬 CNPq: {len(editais_cnpq)} editais")
         print(f"   🎓 UFMG 2025: {len(editais_ufmg_2025)} editais")
         print(f"   📊 TOTAL: {len(todos_editais)} editais")
@@ -113,8 +113,8 @@ def main():
             """
 
         # 📧 Enviar para TODOS os destinatários (teste real)
-        print("
-📧 ENVIANDO EMAILS DE TESTE..."        print("⚠️  ATENÇÃO: Emails serão enviados REALMENTE!")
+        print("\n📧 ENVIANDO EMAILS DE TESTE...")
+        print("⚠️  ATENÇÃO: Emails serão enviados REALMENTE!")
         input("❓ Pressione ENTER para continuar com o envio...")
 
         sucessos = 0
@@ -133,8 +133,8 @@ def main():
                 print(f"   ❌ FALHA no teste!")
 
         # 📊 Resultado final do teste
-        print("
-📊 RESULTADO FINAL DO TESTE:"        print(f"   🧪 Tipo: Teste de Envio Semanal")
+        print("\n📊 RESULTADO FINAL DO TESTE:")
+        print(f"   🧪 Tipo: Teste de Envio Semanal")
         print(f"   📅 Data: {agora.strftime('%d/%m/%Y %H:%M')}")
         print(f"   📧 Total de destinatários: {len(DESTINATARIOS_SEMANAIS)}")
         print(f"   ✅ Testes bem-sucedidos: {sucessos}")

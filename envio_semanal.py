@@ -62,8 +62,8 @@ def main():
         print("⏰ O envio semanal acontece às 5:00 da manhã")
         return False
 
-    print("
-✅ CONDIÇÕES ATENDIDAS - INICIANDO ENVIO SEMANAL..."    print("=" * 60)
+    print("\n✅ CONDIÇÕES ATENDIDAS - INICIANDO ENVIO SEMANAL...")
+    print("=" * 60)
 
     try:
         # 🔄 Executar scraping de todos os sites
@@ -84,8 +84,8 @@ def main():
         # Combinar todos os editais
         todos_editais = editais_fapemig + editais_cnpq + editais_ufmg_2025
 
-        print("
-📊 RESUMO DOS EDITAIS ENCONTRADOS:"        print(f"   🏛️  FAPEMIG: {len(editais_fapemig)} editais")
+        print("\n📊 RESUMO DOS EDITAIS ENCONTRADOS:")
+        print(f"   🏛️  FAPEMIG: {len(editais_fapemig)} editais")
         print(f"   🔬 CNPq: {len(editais_cnpq)} editais")
         print(f"   🎓 UFMG 2025: {len(editais_ufmg_2025)} editais")
         print(f"   📊 TOTAL: {len(todos_editais)} editais")
@@ -128,8 +128,8 @@ def main():
         corpo_email = criar_corpo_email_semanal_completo(todos_editais, agora, editais_fapemig, editais_cnpq, editais_ufmg_2025)
 
         # 📧 Enviar para todos os destinatários
-        print("
-📧 ENVIANDO RELATÓRIOS SEMANAIS..."        sucessos = 0
+        print("\n📧 ENVIANDO RELATÓRIOS SEMANAIS...")
+        sucessos = 0
         falhas = 0
 
         for i, destinatario in enumerate(DESTINATARIOS_SEMANAIS, 1):
@@ -145,8 +145,8 @@ def main():
                 print(f"   ❌ FALHA no envio!")
 
         # 📊 Resultado final
-        print("
-📊 RESULTADO FINAL DO ENVIO SEMANAL:"        print(f"   📅 Data: {agora.strftime('%d/%m/%Y %H:%M')}")
+        print("\n📊 RESULTADO FINAL DO ENVIO SEMANAL:")
+        print(f"   📅 Data: {agora.strftime('%d/%m/%Y %H:%M')}")
         print(f"   📧 Total de destinatários: {len(DESTINATARIOS_SEMANAIS)}")
         print(f"   ✅ Envios bem-sucedidos: {sucessos}")
         print(f"   ❌ Falhas: {falhas}")

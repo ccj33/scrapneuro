@@ -1,45 +1,45 @@
-name: 📧 Envio Semanal de Editais - Segunda-feira 5h
+name: Envio Semanal de Editais - Segunda-feira 5h
 
 on:
   schedule:
-    - cron: '0 8 * * 1'    # TODA SEGUNDA-FEIRA às 8:00 UTC (5:00 BRT)
-  workflow_dispatch:        # Permite execução manual
+    - cron: '0 8 * * 1'    # TODA SEGUNDA-FEIRA as 8:00 UTC (5:00 BRT)
+  workflow_dispatch:        # Permite execucao manual
 
 jobs:
   envio-semanal:
     runs-on: ubuntu-latest
 
     steps:
-      - name: 🔄 Checkout do código
+      - name: Checkout do codigo
         uses: actions/checkout@v4
 
-      - name: 🐍 Setup Python
+      - name: Setup Python
         uses: actions/setup-python@v4
         with:
           python-version: '3.9'
 
-      - name: 📦 Instalar dependências
+      - name: Instalar dependencias
         run: |
           pip install selenium
           pip install beautifulsoup4
           pip install requests
 
-      - name: 🌐 Instalar Google Chrome
+      - name: Instalar Google Chrome
         run: |
           wget -q -O - https://dl.google.com/linux/linux_signing_key.pub | sudo apt-key add -
           echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" | sudo tee /etc/apt/sources.list.d/google-chrome.list
           sudo apt-get update
           sudo apt-get install -y google-chrome-stable
 
-      - name: 📧 Executar envio semanal
+      - name: Executar envio semanal
         run: |
-          echo "🚀 Iniciando envio semanal com timeout de 15 minutos..."
-          timeout 900 python envio_semanal.py || echo "❌ Processo semanal interrompido por timeout ou erro"
+          echo "Iniciando envio semanal com timeout de 15 minutos..."
+          timeout 900 python envio_semanal.py || echo "Processo semanal interrompido por timeout ou erro"
         env:
           EMAIL_USER: ${{ secrets.EMAIL_USER }}
           EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
 
-      - name: 💾 Upload dos arquivos gerados
+      - name: Upload dos arquivos gerados
         uses: actions/upload-artifact@v4
         with:
           name: relatorios-semanais
@@ -47,15 +47,15 @@ jobs:
             editais_scraping.json
             editais_scraping.csv
 
-      - name: 📊 Status do envio
+      - name: Status do envio
         if: always()
         run: |
-          echo "📅 Data: $(date)"
-          echo "📧 Workflow: Envio Semanal - Segunda-feira 5h"
-          echo "🏛️ Sistema: Scrap Neuro - Multi-site"
+          echo "Data: $(date)"
+          echo "Workflow: Envio Semanal - Segunda-feira 5h"
+          echo "Sistema: Scrap Neuro - Multi-site"
           if [ -f "editais_scraping.json" ]; then
-            echo "✅ Arquivos gerados com sucesso"
-            echo "📊 Editais encontrados: $(grep -c '"titulo"' editais_scraping.json || echo 'N/A')"
+            echo "Arquivos gerados com sucesso"
+            echo "Editais encontrados: $(grep -c '"titulo"' editais_scraping.json || echo 'N/A')"
           else
-            echo "❌ Falha na geração dos arquivos"
+            echo "Falha na geracao dos arquivos"
           fi
