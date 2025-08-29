@@ -794,23 +794,15 @@ def enviar_relatorio_automatico():
     print(f"📅 Data completa: {hoje.strftime('%d/%m/%Y %H:%M:%S')}")
 
     # 📧 CONFIGURAÇÃO DOS DESTINATÁRIOS
-    EMAIL_DIARIO = "ccjota51@gmail.com"        # Todo dia 5
-    EMAIL_SEMANAL = "clevioferreira@gmail.com" # Toda segunda
+    EMAIL_DIARIO = "ccjota51@gmail.com"        # Recebe TODO DIA
+    EMAIL_SEMANAL = "clevioferreira@gmail.com" # Recebe TODO DIA
 
     print(f"📧 Email diário: {EMAIL_DIARIO}")
     print(f"📧 Email semanal: {EMAIL_SEMANAL}")
 
-    # ⚠️ FORÇAR ENVIO PARA TESTES (remova depois de testar)
-    TESTE_FORCADO = True  # ALTERE PARA False APÓS OS TESTES
-
-    if TESTE_FORCADO:
-        print("🧪 MODO TESTE ATIVADO - Enviando email independente da data!")
-        deve_enviar_diario = True
-        deve_enviar_semanal = False
-    else:
-        # Verificar condições normais de envio
-        deve_enviar_diario = (dia_mes == 5)
-        deve_enviar_semanal = (dia_semana == 0)  # 0 = segunda-feira
+    # ✅ ENVIO DIÁRIO ATIVADO (workflow roda todo dia às 5:00)
+    deve_enviar_diario = True   # TODO DIA
+    deve_enviar_semanal = True  # TODO DIA
 
     print(f"📧 Deve enviar relatório diário: {deve_enviar_diario}")
     print(f"📧 Deve enviar relatório semanal: {deve_enviar_semanal}")

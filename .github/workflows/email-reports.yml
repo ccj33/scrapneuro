@@ -3,8 +3,7 @@ on:
   push:
     branches: [ main, master ]  # Roda automaticamente em cada commit
   schedule:
-    - cron: '0 5 5 * *'     # Todo dia 5 às 5:00 UTC
-    - cron: '0 5 * * 1'     # Toda segunda às 5:00 UTC
+    - cron: '0 5 * * *'     # TODO DIA às 5:00 UTC (5:00 da manhã)
   workflow_dispatch:          # Permite execução manual
 
 jobs:
